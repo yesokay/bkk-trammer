@@ -68,13 +68,16 @@ def blit_schedule():
         ml = int((t - time.time()) / 60)
         return str(ml)
 
-    if not schedule:
         next_text = ''
         later_text = ''
-    else:
+
+    if schedule:
         upnext = [mins_left(x) for x in schedule if x - time.time() > 45]
-        next_text = upnext[0] + ' min'
-        later_text = ', '.join(x + ' min' for x in upnext[1:3])
+
+        if upnext:
+            next_text = upnext[0] + ' min'
+            later_text = ', '.join(x + ' min' for x in upnext[1:3])
+
 
     next_display = next_font.render(next_text, True, white, black)
     next_block = next_display.get_rect()
