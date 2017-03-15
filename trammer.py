@@ -220,6 +220,7 @@ def toggle_screen(s = None):
 
 ''' Main loop '''
 
+draw_label('2', yellow)
 view = 'schedule'
 
 while True:
@@ -247,7 +248,6 @@ while True:
     else:
         check_schedule(minutes, stop_id)
         blit_schedule()
-        draw_label('2', yellow)
 
     blit_clock()
 

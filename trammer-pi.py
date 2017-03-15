@@ -1,4 +1,5 @@
 #!/usr/bin/env python
+# -*- coding: utf-8 -*-
 
 import pygame
 import sys, time, os, requests
@@ -28,7 +29,9 @@ minutes = 60 # Arrivals in the next X minutes
 stop_id = 'BKK_F01343' # Zsil utca
 
 updated_at = 0
+updated_weather_at = 0
 schedule = []
+weather = ('Temp','Condition')
 next_text = None
 later_text = None
 
@@ -91,6 +94,21 @@ def blit_schedule():
     screen.blit(next_display, next_block)
     screen.blit(later_display, later_block)
 
+def blit_weather():
+
+    temp_text, descr_text = check_weather()
+
+    htemp_display = next_font.render(temp_text.decode('utf-8'), True, white, black) # extra decode needed for ° character
+    htemp_block = htemp_display.get_rect()
+    htemp_block.center = (160,80)
+
+    descr_display = later_font.render(descr_text, True, white, black)
+    descr_block = descr_display.get_rect()
+    descr_block.center = (160, 128)
+
+    pygame.draw.rect(screen, black, (0, htemp_block.top, 320, descr_block.bottom - htemp_block.top)) # prevent old text hangover
+    screen.blit(htemp_display, htemp_block)
+    screen.blit(descr_display, descr_block)   
 
 
 def check_schedule(minutes, stop_id):
@@ -138,8 +156,40 @@ def get_schedule(stop_id, duration = 30):
     return r.json()
 
 
-def get_weather():
-    return (12, 'cloudy')
+def check_weather():
+    global updated_weather_at, weather
+
+
+    if time.time() - updated_weather_at < 600:
+        return weather
+    else:
+        w = get_weather()
+        temp_text = str(w[0]) + '°'
+        condition_text = w[1]
+
+        weather = (temp_text, condition_text)
+        updated_weather_at = time.time()
+
+    return weather
+
+
+def get_weather(woeid = 804365):
+
+    p = {   'q': 'select item.condition.temp, item.condition.text from weather.forecast where woeid = ' + str(woeid) + ' and u = "c"',
+            'format': 'json' }
+
+    r = requests.get('https://query.yahooapis.com/v1/public/yql', p)
+    if r.status_code != 200:
+        return ('-', 'Could not get weather')
+
+    d = r.json()
+    d = d['query']['results']['channel']['item']['condition']
+    print d
+
+    temp = d['temp']
+    cond = d['text']
+
+    return (temp, cond)
 
 
 def draw_label(text, color):
@@ -156,17 +206,31 @@ def draw_label(text, color):
     screen.blit(label_display, label_block)
 
 
+def toggle_screen(s = None):
+    global view
 
-''' Draw label '''
-draw_label('2', yellow)
+    if s != None:
+        view == s
+    else:
+        if view == 'weather':
+            view = 'schedule'
+        elif view == 'schedule':
+            view = 'weather'
+
 
 
 ''' Main loop '''
+
+view = 'schedule'
 while True:
     
     for event in pygame.event.get():
         if event.type == QUIT:
             sys.exit()
+
+        if event.type == MOUSEBUTTONDOWN:
+            toggle_screen();
+
 
     p = pygame.key.get_pressed()
     if p[K_ESCAPE]:
@@ -178,9 +242,14 @@ while True:
         pygame.quit()
         sys.exit(0)
 
+    if view == 'weather':
+        blit_weather()
+    else:
+        check_schedule(minutes, stop_id)
+        blit_schedule()
+        draw_label('2', yellow)
+
     blit_clock()
-    check_schedule(minutes, stop_id)
-    blit_schedule()
 
     pygame.display.update()
     fpsClock.tick(12)
